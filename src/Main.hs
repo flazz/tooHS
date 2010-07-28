@@ -1,84 +1,83 @@
 module Main where
 
-import qualified Graphics.Rendering.OpenGL.GL as GL
-import qualified Graphics.Rendering.OpenGL.GLU as GL
+import Graphics.Rendering.OpenGL.GL
+import Graphics.Rendering.OpenGL.GLU
 import qualified Graphics.UI.GLUT as GLUT
-import Graphics.Rendering.OpenGL.GL (($=))
 import Data.IORef
 import Control.Monad
 import Data.Time
 
 import Game
 import Sprite
-
-tau = pi * 2
-toDegrees r = r * 360 / tau
+import Input
 
 main = do
-  GLUT.initialDisplayMode $= [ GLUT.RGBAMode
-                             , GLUT.Multisampling
-                             , GLUT.DoubleBuffered
-                             , GLUT.WithAlphaComponent
+
+  GLUT.initialDisplayMode $= [ GLUT.DoubleBuffered
+                             , GLUT.RGBAMode
+                             , GLUT.WithDepthBuffer
                              ]
 
-
-  GLUT.initialWindowSize $= GL.Size 800 800
+  GLUT.initialWindowSize $= Size 800 800
   (progname, args) <- GLUT.getArgsAndInitialize
-  GL.Size xres yres <- GL.get GLUT.screenSize
+  Size xres yres <- get GLUT.screenSize
   GLUT.createWindow "the window !!!"
 
   gameRef <- newIORef $ initialGame
 
+  GLUT.globalKeyRepeat $= GLUT.GlobalKeyRepeatOff
+
   GLUT.displayCallback $= (display gameRef)
-  GLUT.idleCallback $= Just (updateState gameRef)
-  GLUT.keyboardMouseCallback $= Just (input gameRef)
+  GLUT.keyboardMouseCallback $= Just (handleInput gameRef)
+  GLUT.idleCallback $= Just (handleIdle gameRef)
   GLUT.mainLoop
 
-black = GL.Color4 0 0 0 1 :: GL.Color4 GL.GLclampf
-red = GL.Color4 1 0 0 1 :: GL.Color4 GL.GLclampf
-white = GL.Color4 1 1 1 1 :: GL.Color4 GL.GLclampf
+  where
+    handleInput gameRef key state _ _ = input gameRef key state
+    handleIdle gameRef = do
+        modifyIORef gameRef updateGame
+        GLUT.postRedisplay Nothing
 
-updateState :: IORef Game -> IO ()
-updateState gameRef = do
-    modifyIORef gameRef updateGame
-    GLUT.postRedisplay Nothing
-
-input gameRef (GLUT.SpecialKey GLUT.KeyLeft) GLUT.Down _ _ = modifyIORef gameRef $ go (-1)
-input gameRef (GLUT.SpecialKey GLUT.KeyLeft) GLUT.Up _ _ = modifyIORef gameRef $ go 0
-input gameRef (GLUT.SpecialKey GLUT.KeyRight) GLUT.Down _ _ = modifyIORef gameRef $ go 1
-input gameRef (GLUT.SpecialKey GLUT.KeyRight) GLUT.Up _ _ = modifyIORef gameRef $ go 0
-input gameRef _ _ _ _ = return ()
-
-display stateRef = do
+display gameRef = do
   setDrawingFeatures
-  GL.clear [GL.ColorBuffer, GL.DepthBuffer]
+  clear [ColorBuffer, DepthBuffer]
 
   setProjectionMatrix
   setModelMatrix
-
-  GL.translate (GL.Vector3 0 0 0 :: GL.Vector3 Float)
-
-  state <- readIORef stateRef
-  (draw . ship) state
-
-  GL.flush
+  setLighting
+  translate (Vector3 0 0 (-2) :: Vector3 Float)
+  game <- readIORef gameRef
+  (draw . ship) game
+  mapM_ draw (shots game)
   GLUT.swapBuffers
 
   where
-
     setDrawingFeatures = do
-      GL.clearColor $= white
-      GL.blend $= GL.Enabled
-      GL.blendFunc $= (GL.SrcAlpha, GL.OneMinusSrcAlpha)
-      GL.lineSmooth $= GL.Enabled
-      GL.pointSmooth $= GL.Enabled
-      GL.depthFunc $= Just GL.Less
+      clearColor $= black
+      blend $= Enabled
+      blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
+      {-depthFunc $= Just Less-}
+      depthFunc $= Just Lequal
+      where black = Color4 0 0 0 1 :: Color4 GLclampf
 
     setProjectionMatrix = do
-      GL.matrixMode $= GL.Projection
-      GL.loadIdentity
-      GL.ortho2D (-1.2) 1.2 (-1.2) 1.2
+      matrixMode $= Projection
+      loadIdentity
+      perspective 45 1 1 1000
 
     setModelMatrix = do
-      GL.matrixMode $= GL.Modelview 0
-      GL.loadIdentity
+      matrixMode $= Modelview 0
+      loadIdentity
+
+    setLighting = do
+      normalize $= Enabled
+      shadeModel $= Smooth
+
+      lighting $= Enabled
+      lightModelTwoSide $= Enabled
+      light (Light 0) $= Enabled
+
+      ambient (Light 0) $= (Color4 0.2 0.2 0.2 1)
+      diffuse (Light 0) $= (Color4 0.8 0.8 0.8 1)
+      specular (Light 0) $= (Color4 1 1 1 1)
+      position (Light 0) $= Vertex4 (-1.5) (1.0) (-4.0) (1.0)
