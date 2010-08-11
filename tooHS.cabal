@@ -1,0 +1,41 @@
+name:         tooHS
+version:      0.0.1
+category:     Game
+synopsis:     FILL-ME-IN
+description:  FILL-ME-IN
+author:       FILL-ME-IN
+maintainer:   FILL-ME-IN
+license:      BSD3
+license-file: LICENSE
+
+cabal-version: >= 1.6
+build-type: Simple
+
+flag executable
+  description: Build the `tooHS' executable.
+  default: True
+
+executable tooHS
+  if flag(executable)
+    buildable: True
+  else
+    buildable: False
+
+  hs-source-dirs:
+    src
+
+  main-is: Main.hs
+
+  build-depends:
+    GLUT   == 2.1.2.*,
+    OpenGL == 2.2.3.*,
+    base   == 4.*,
+    time
+
+  ghc-options: -Wall
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
+
+source-repository head
+  type: git
+  location: git://github.com/flazz/tooHS.git
