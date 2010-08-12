@@ -4,13 +4,13 @@ import Graphics.Rendering.OpenGL.GL
 import Graphics.Rendering.OpenGL.GLU
 import qualified Graphics.UI.GLUT as GLUT
 import Data.IORef
-import Control.Monad
-import Data.Time
 
+import Environment
 import Game
 import Sprite
 import Input
 
+main :: IO ()
 main = do
 
   GLUT.initialDisplayMode $= [ GLUT.DoubleBuffered
@@ -19,9 +19,9 @@ main = do
                              ]
 
   GLUT.initialWindowSize $= Size 800 800
-  (progname, args) <- GLUT.getArgsAndInitialize
+  (_progname, _args) <- GLUT.getArgsAndInitialize
   Size xres yres <- get GLUT.screenSize
-  GLUT.createWindow "the window !!!"
+  GLUT.createWindow "toohs"
 
   gameRef <- newIORef $ initialGame
 
@@ -38,6 +38,7 @@ main = do
         modifyIORef gameRef updateGame
         GLUT.postRedisplay Nothing
 
+display :: IORef Game -> IO ()
 display gameRef = do
   setDrawingFeatures
   clear [ColorBuffer, DepthBuffer]
@@ -45,20 +46,25 @@ display gameRef = do
   setProjectionMatrix
   setModelMatrix
   setLighting
-  translate (Vector3 0 0 (-2) :: Vector3 Float)
+
   game <- readIORef gameRef
+
+  (drawTerrain . terrain) game
+
+  translate (Vector3 0 0 (-2) :: Vector3 Float)
   (draw . ship) game
   mapM_ draw (shots game)
   GLUT.swapBuffers
 
   where
     setDrawingFeatures = do
-      clearColor $= black
+      clearColor $= white
       blend $= Enabled
       blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
       {-depthFunc $= Just Less-}
       depthFunc $= Just Lequal
       where black = Color4 0 0 0 1 :: Color4 GLclampf
+            white = Color4 1 1 1 1 :: Color4 GLclampf
 
     setProjectionMatrix = do
       matrixMode $= Projection

@@ -7,24 +7,27 @@ import Data.IORef
 import Control.Monad
 
 import Sprite
+import Environment
 
 data Game = Game { ship :: Ship
                  , shots :: [Shot]
                  , targets :: [Target]
                  , shooting :: Bool
+                 , terrain :: [Strip]
                  }
 
 initialGame = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
                    , shots = []
                    , targets = []
                    , shooting = False
+                   , terrain = initialTerrain
                    }
 
 updateGame :: Game -> Game
 updateGame g = g { ship = (update . ship) g
-                 , shots = filter ib $ map update (shots g)
+                 , shots = (filter onScreen . map update) $ shots g
                  }
-  where ib (Shot (Vector3 x y z)) = y < 1.0
+  where onScreen (Shot (Vector3 x y z)) = y < 1.0
 
 go :: Float -> Game -> Game
 go v g = let Ship p _ = ship g
