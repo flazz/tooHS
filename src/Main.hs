@@ -5,7 +5,6 @@ import Graphics.Rendering.OpenGL.GLU
 import qualified Graphics.UI.GLUT as GLUT
 import Data.IORef
 
-import Environment
 import Game
 import Sprite
 import Input
@@ -30,6 +29,7 @@ main = do
   GLUT.displayCallback $= (display gameRef)
   GLUT.keyboardMouseCallback $= Just (handleInput gameRef)
   GLUT.idleCallback $= Just (handleIdle gameRef)
+  scrollTerrain gameRef
   GLUT.mainLoop
 
   where
@@ -49,8 +49,7 @@ display gameRef = do
 
   game <- readIORef gameRef
 
-  (drawTerrain . terrain) game
-
+  (draw . terrain) game
   translate (Vector3 0 0 (-2) :: Vector3 Float)
   (draw . ship) game
   mapM_ draw (shots game)
@@ -86,4 +85,4 @@ display gameRef = do
       ambient (Light 0) $= (Color4 0.2 0.2 0.2 1)
       diffuse (Light 0) $= (Color4 0.8 0.8 0.8 1)
       specular (Light 0) $= (Color4 1 1 1 1)
-      position (Light 0) $= Vertex4 (-1.5) (1.0) (-4.0) (1.0)
+      position (Light 0) $= Vertex4 1 1 0 (1.0)

@@ -7,13 +7,12 @@ import Data.IORef
 import Control.Monad
 
 import Sprite
-import Environment
 
 data Game = Game { ship :: Ship
                  , shots :: [Shot]
                  , targets :: [Target]
                  , shooting :: Bool
-                 , terrain :: [Strip]
+                 , terrain :: Terrain
                  }
 
 initialGame = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
@@ -25,9 +24,11 @@ initialGame = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
 
 updateGame :: Game -> Game
 updateGame g = g { ship = (update . ship) g
-                 , shots = (filter onScreen . map update) $ shots g
+                 , shots = (dropWhile offScreen . map update) $ shots g
+                 {-, terrain = (update . terrain) g-}
                  }
-  where onScreen (Shot (Vector3 x y z)) = y < 1.0
+
+  where offScreen (Shot (Vector3 x y z)) = y > 0.5
 
 go :: Float -> Game -> Game
 go v g = let Ship p _ = ship g
@@ -51,3 +52,10 @@ keepShooting gameRef = do
 stopShooting :: IORef Game -> IO ()
 stopShooting gameRef = modifyIORef gameRef f
   where f g = g { shooting = False }
+
+scrollTerrain :: IORef Game -> IO ()
+scrollTerrain gameRef = do
+  game <- readIORef gameRef
+  let game' = game { terrain = (update . terrain) game }
+  writeIORef gameRef game'
+  addTimerCallback 50 $ scrollTerrain gameRef

@@ -71,3 +71,58 @@ instance Sprite Target where
     renderPrimitive Points $ do
       vertex (Vertex3 0 0 0 :: Vertex3 Float)
   update = id
+
+green1 = Color4 0 1 0 (0.3) :: Color4 GLclampf
+green2 = Color4 0 1 0 1 :: Color4 GLclampf
+black = Color4 0 0 0 1 :: Color4 GLclampf
+
+isEven x = 0 == (mod (truncate x) 2)
+
+stripPoints :: [Vertex3 Float]
+stripPoints = [ Vertex3 (f y) y 0 | y <- [0..] ]
+  where f n | isEven n = 0.5
+            | otherwise = -0.5
+
+l :: Vertex3 Float -> Vertex3 Float
+l v@(Vertex3 x y z) | isEven y = Vertex3 (x - 2) y z
+                    | otherwise = v
+
+r :: Vertex3 Float -> Vertex3 Float
+r v@(Vertex3 x y z) | isEven y = v
+                    | otherwise = Vertex3 (x + 2) y z
+
+renderStrip :: [Vertex3 Float] -> IO ()
+renderStrip vs = do
+  let vs' = pad $ takeWhile onScreen vs
+  materialAmbientAndDiffuse FrontAndBack $= green1
+  materialShininess FrontAndBack $= 0.8
+  renderPrimitive TriangleStrip $ mapM_ vertex vs'
+
+  materialAmbientAndDiffuse FrontAndBack $= green2
+  renderPrimitive LineStrip $ mapM_ vertex vs'
+  where onScreen (Vertex3 x y z) = y <= (5.0)
+        pad vs = let (Vertex3 x1 y1 z1):(Vertex3 x2 y2 _):_ = vs
+                 in if x1 > x2 then vs else (Vertex3 x2 y1 z1):vs
+
+scrollStrip :: Float -> [Vertex3 Float] -> [Vertex3 Float]
+scrollStrip dy = (dropWhile offScreen) . (map moveY)
+  where moveY (Vertex3 x y z) = Vertex3 x (y - dy) z
+        offScreen (Vertex3 x y z) = y <= (-5.0)
+
+-- | terrain
+data Terrain = Terrain [[Vertex3 Float]]
+
+initialTerrain :: Terrain
+initialTerrain = Terrain [ stripPoints
+                         , map l stripPoints
+                         , map r stripPoints
+                         ]
+
+instance Sprite Terrain where
+  draw (Terrain ss) = do
+    preservingMatrix $ do
+      loadIdentity
+      translate (Vector3 0 0 (-10::Float))
+      mapM_ renderStrip ss
+  update (Terrain ss) = Terrain ss'
+    where ss' = map (scrollStrip 0.01) ss
