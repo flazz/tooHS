@@ -4,6 +4,7 @@ import Graphics.Rendering.OpenGL.GL
 import Graphics.Rendering.OpenGL.GLU
 import qualified Graphics.UI.GLUT as GLUT
 import Data.IORef
+import System.Random
 
 import Game
 import Sprite
@@ -22,7 +23,10 @@ main = do
   Size xres yres <- get GLUT.screenSize
   GLUT.createWindow "toohs"
 
-  gameRef <- newIORef $ initialGame
+  gen <- newStdGen
+  let rs = randomRs (-0.5, 0.5) gen
+
+  gameRef <- newIORef $ (initialGame rs)
 
   GLUT.globalKeyRepeat $= GLUT.GlobalKeyRepeatOff
 
@@ -76,7 +80,7 @@ display gameRef = do
 
     setLighting = do
       normalize $= Enabled
-      shadeModel $= Smooth
+      shadeModel $= Flat
 
       lighting $= Enabled
       lightModelTwoSide $= Enabled
@@ -85,4 +89,4 @@ display gameRef = do
       ambient (Light 0) $= (Color4 0.2 0.2 0.2 1)
       diffuse (Light 0) $= (Color4 0.8 0.8 0.8 1)
       specular (Light 0) $= (Color4 1 1 1 1)
-      position (Light 0) $= Vertex4 1 1 0 (1.0)
+      position (Light 0) $= Vertex4 1 0 1 (1.0)

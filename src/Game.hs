@@ -15,17 +15,16 @@ data Game = Game { ship :: Ship
                  , terrain :: Terrain
                  }
 
-initialGame = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
-                   , shots = []
-                   , targets = []
-                   , shooting = False
-                   , terrain = initialTerrain
-                   }
+initialGame rs = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
+                       , shots = []
+                       , targets = []
+                       , shooting = False
+                       , terrain = initialTerrain rs
+                       }
 
 updateGame :: Game -> Game
 updateGame g = g { ship = (update . ship) g
                  , shots = (dropWhile offScreen . map update) $ shots g
-                 {-, terrain = (update . terrain) g-}
                  }
 
   where offScreen (Shot (Vector3 x y z)) = y > 0.5
@@ -58,4 +57,5 @@ scrollTerrain gameRef = do
   game <- readIORef gameRef
   let game' = game { terrain = (update . terrain) game }
   writeIORef gameRef game'
-  addTimerCallback 50 $ scrollTerrain gameRef
+  postRedisplay Nothing
+  addTimerCallback 10 $ scrollTerrain gameRef
