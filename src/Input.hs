@@ -15,8 +15,5 @@ input gameRef (Char 'k') Up = modifyIORef gameRef $ go 0
 input gameRef (Char 'f') Down = do
   modifyIORef gameRef $ \g -> g {shooting = True}
   fireShot gameRef
-  keepShooting gameRef
-
-input gameRef (Char 'f') Up = stopShooting gameRef
 
 input gameRef _ _ = return ()

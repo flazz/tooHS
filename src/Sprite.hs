@@ -4,13 +4,23 @@ import Graphics.Rendering.OpenGL.GL
 import Graphics.Rendering.OpenGL.GLU
 
 class Sprite a where
+  pos :: a -> Vector3 Float
   draw :: a -> IO ()
   update :: a -> a
+
+  onScreen, offScreen :: a -> Bool
+  onScreen s = let Vector3 x y z = pos s
+               in (abs x) <= 1 && (abs y) <= 1
+  offScreen = not . onScreen
+
+updateSprites :: Sprite a => [a] -> [a]
+updateSprites = dropWhile offScreen . map update
 
 -- | ship
 data Ship = Ship (Vector3 Float) Float
 
 instance Sprite Ship where
+  pos (Ship p v) = p
 
   draw (Ship p v) = do
     preservingMatrix $ do
@@ -27,13 +37,14 @@ instance Sprite Ship where
     where blue = Color4 0 0 1 (0.8) :: Color4 GLclampf
 
   update (Ship p v) = let Vector3 x y z = p
-                          x' = x + 0.0005 * v
+                          x' = x + 0.02 * v
                           p' = Vector3 x' y z
                       in Ship p' v
 
 -- | shot
 data Shot = Shot (Vector3 Float)
 instance Sprite Shot where
+  pos (Shot p) = p
 
   draw (Shot p) = do
     preservingMatrix $ do
@@ -41,7 +52,7 @@ instance Sprite Shot where
       scale 0.02 0.02 (0.02::Float)
 
       let Vector3 _ d _ = p
-      rotate (200 * d) (Vector3 0 1 0)
+      rotate (300 * d) (Vector3 0 0 1)
 
       renderPrimitive Triangles $ do
         color red
@@ -50,28 +61,34 @@ instance Sprite Shot where
         vertex $ Vertex3 (-1) (-1) (0::Float)
         vertex $ Vertex3 1 (-1) (0::Float)
 
-      rotate (90::Float) (Vector3 0 1 0)
-      renderPrimitive Triangles $ do
-        color red
-        vertex $ Vertex3 0 1 (0::Float)
-        vertex $ Vertex3 (-1) (-1) (0::Float)
-        vertex $ Vertex3 1 (-1) (0::Float)
     where red = Color4 1 0 0 1 :: Color4 GLclampf
 
-  update (Shot (Vector3 x y z)) = let p = Vector3 x (y + 0.001) z
+  update (Shot (Vector3 x y z)) = let p = Vector3 x (y + 0.025) z
                                   in Shot p
 
 -- | target
 data Target = Target (Vector3 Float)
 instance Sprite Target where
+
+  pos (Target v) = v
+
   draw (Target v) = do
-    translate v
-    renderPrimitive Points $ do
-      vertex (Vertex3 0 0 0 :: Vertex3 Float)
-  update = id
+    preservingMatrix $ do
+      translate v
+      scale 0.1 0.1 (0.1::Float)
+      renderPrimitive Quads $ do
+        materialAmbientAndDiffuse Front $= black
+        vertex (Vertex3 ( 0.5) ( 0.5) 0 :: Vertex3 Float)
+        vertex (Vertex3 (-0.5) ( 0.5) 0 :: Vertex3 Float)
+        vertex (Vertex3 (-0.5) (-0.5) 0 :: Vertex3 Float)
+        vertex (Vertex3 ( 0.5) (-0.5) 0 :: Vertex3 Float)
+
+  update (Target (Vector3 x y z)) = Target $ Vector3 x' y' z
+    where
+      x' = x + (sin (20*y))/100
+      y' = (y - 0.005)
 
 -- | terrain
-
 green = Color4 0 1 0 1 :: Color4 GLclampf
 black = Color4 0 0 0 1 :: Color4 GLclampf
 white = Color4 1 1 1 1 :: Color4 GLclampf
@@ -86,11 +103,11 @@ stripPoints = [ Vertex3 (f y) y 0 | y <- [0..] ]
             | otherwise = -0.5
 
 wiggle ns vs = zipWith f ns' vs
-  where f (a, b, c) (Vertex3 x y z) = let x' = x + a
+  where f (a, b, c) (Vertex3 x y z) = let x' = x + a / 2
                                           y' = y
-                                          z' = sin $ z + c
+                                          z' = z + b
                                       in Vertex3 x' y' z'
-        ns' = zip3 ns (drop 1 ns) (drop 2 ns)
+        ns' = zip3 ns (drop 1 ns) [0.1, 0.2 ..]
 
 le :: Vertex3 Float -> Vertex3 Float
 le v@(Vertex3 x y z) | isEven y = Vertex3 (x - 2) y z
@@ -144,10 +161,12 @@ initialTerrain ns = let ps = wiggle ns stripPoints
                                ]
 
 instance Sprite Terrain where
+  pos t = Vector3 0 0 0
+
   draw (Terrain ss) = do
     preservingMatrix $ do
       loadIdentity
-      translate (Vector3 0 0 (-7::Float))
+      translate (Vector3 0 0 (-6::Float))
       mapM_ renderStrip ss
   update (Terrain ss) = Terrain ss'
     where ss' = map (scrollStrip 0.01) ss

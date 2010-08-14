@@ -24,7 +24,7 @@ main = do
   GLUT.createWindow "toohs"
 
   gen <- newStdGen
-  let rs = randomRs (-0.5, 0.5) gen
+  let rs = randomRs (-1.0, 1.0) gen
 
   gameRef <- newIORef $ (initialGame rs)
 
@@ -32,15 +32,21 @@ main = do
 
   GLUT.displayCallback $= (display gameRef)
   GLUT.keyboardMouseCallback $= Just (handleInput gameRef)
-  GLUT.idleCallback $= Just (handleIdle gameRef)
-  scrollTerrain gameRef
+
+  period 16 $ do
+    modifyIORef gameRef updateGame
+    GLUT.postRedisplay Nothing
+
   GLUT.mainLoop
 
   where
     handleInput gameRef key state _ _ = input gameRef key state
-    handleIdle gameRef = do
-        modifyIORef gameRef updateGame
-        GLUT.postRedisplay Nothing
+
+period :: GLUT.Timeout -> GLUT.TimerCallback -> IO ()
+period delay action = do
+  action
+  GLUT.addTimerCallback delay $ period delay action
+
 
 display :: IORef Game -> IO ()
 display gameRef = do
@@ -57,6 +63,7 @@ display gameRef = do
   translate (Vector3 0 0 (-2) :: Vector3 Float)
   (draw . ship) game
   mapM_ draw (shots game)
+  mapM_ draw (targets game)
   GLUT.swapBuffers
 
   where
