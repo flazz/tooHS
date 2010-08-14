@@ -11,38 +11,39 @@ import Sprite
 data Game = Game { ship :: Ship
                  , shots :: [Shot]
                  , targets :: [Target]
-                 , shooting :: Bool
                  , terrain :: Terrain
                  }
 
+-- | the initial game state
 initialGame rs = Game { ship = (Ship (Vector3 0 (-0.6) 0) 0)
-                       , shots = []
-                       , targets = []
-                       , shooting = False
-                       , terrain = initialTerrain rs
-                       }
+                      , shots = []
+                      , targets = []
+                      , terrain = initialTerrain rs
+                      }
 
+-- | update ship, shots, targets & terrain
 updateGame :: Game -> Game
 updateGame g = g { ship = (update . ship) g
                  , shots = (updateSprites . shots) g
                  , targets = case targets g of
-                             [] -> targetBatch
-                             otherwise -> (updateSprites . targets) g
+                               [] -> targetBatch
+                               otherwise -> (updateSprites . targets) g
                  , terrain = (update . terrain) g
                  }
-  where
-    targetBatch = [ Target (Vector3 (   0) (0.8) 0)
-                  , Target (Vector3 ( 0.5) (0.8) 0)
-                  , Target (Vector3 (-0.5) (0.8) 0)
-                  ]
 
+-- | a set of new targets
+targetBatch :: [Target]
+targetBatch = map Target [ Vector3 x 0.8 0 | x <- [-0.5, 0, 0.5]]
+
+-- | go right (1), left (-1) or stay still 0
 go :: Float -> Game -> Game
 go v g = let Ship p _ = ship g
          in g { ship = Ship p v }
 
+-- | fire one shot
 fireShot :: IORef Game -> IO ()
 fireShot gameRef = do
-  modifyIORef gameRef f
-  where f g = let Ship (Vector3 x y z) v = ship g
-                  newShot = Shot (Vector3 x (y + 0.1) z)
-              in g { shots = newShot:(shots g) }
+  modifyIORef gameRef addShot
+  where addShot g = g { shots = s:(shots g) }
+          where Vector3 x y z = pos . ship $ g
+                s = Shot $ Vector3 x (y + 0.1) z
